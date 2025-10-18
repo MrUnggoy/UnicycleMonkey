@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monkey Unicycle Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent scrolling on mobile */
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+        }
+        
+        canvas {
+            border: none;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            touch-action: none; /* Prevent default touch behaviors */
+        }
+        
+
+        
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 5px 15px;
+            border-radius: 5px;
+            color: #333;
+            z-index: 10;
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            #gameInfo {
+                font-size: 12px;
+                padding: 3px 10px;
+            }
+        }
+        
+        /* Landscape mobile orientation */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #gameInfo {
+                display: none; /* Hide text info in landscape to save space */
+            }
+        }
+        
+        /* Very small screens - minimal UI */
+        @media (max-width: 480px) {
+            #gameInfo {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+        }
+        
+        /* Fullscreen button overlay */
+        #fullscreenBtn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 99, 71, 0.9);
+            border: 2px solid white;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            z-index: 1000;
+            user-select: none;
+        }
+        
+        #fullscreenBtn:hover {
+            background: rgba(255, 99, 71, 1);
+            transform: scale(1.05);
+        }
+        
+        #fullscreenBtn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="gameInfo">
+            <span>Level: <span id="level">1</span></span> | 
+            <span>Score: <span id="score">0</span></span> | 
+            <span>Bananas: <span id="bananas">0</span>/<span id="totalBananas">0</span></span>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <!-- Fullscreen button overlay -->
+        <button id="fullscreenBtn" title="Enter Fullscreen">FS</button>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
