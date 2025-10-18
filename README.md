@@ -7,6 +7,7 @@ A fun mobile-friendly game where you control a monkey on a unicycle collecting b
 ### 🎮 Tilt Controls
 - **Automatic Detection**: Tilt controls are enabled by default on mobile devices
 - **Easy Calibration**: The game auto-calibrates when you first start playing
+- **Orientation Aware**: Automatically adjusts when you rotate your phone (portrait/landscape)
 - **Recalibration**: Double-tap the screen during gameplay to recalibrate tilt controls
 - **Toggle**: Use the "TILT: ON/OFF" button in the main menu to switch between tilt and touch controls
 
@@ -47,6 +48,7 @@ A fun mobile-friendly game where you control a monkey on a unicycle collecting b
 - **Hold steady**: Keep your device level when the game starts for best calibration
 - **Small movements**: You don't need to tilt much - small movements work best
 - **Practice**: Try the first level a few times to get used to the tilt sensitivity
-- **Landscape mode**: Often provides better control and visibility
+- **Any orientation**: The game works great in both portrait and landscape - choose what's comfortable!
+- **Auto-recalibration**: The game automatically recalibrates when you rotate your device
 
 Enjoy your monkey unicycle adventure! 🐒🚲🍌

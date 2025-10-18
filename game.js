@@ -28,7 +28,7 @@ class MonkeyUnicycleGame {
 
         // Load banana image (smaller, optimized version)
         this.bananaImage = new Image();
-        this.bananaImage.src = 'images/banana-clipart_sm.png';
+        this.bananaImage.src = 'images/banana_clipart_sm.png';
         this.bananaImageLoaded = false;
 
         this.bananaImage.onload = () => {
@@ -87,12 +87,19 @@ class MonkeyUnicycleGame {
             gamma: 0, // left/right tilt
             beta: 0,  // forward/backward tilt
             calibrated: false,
-            calibrationOffset: 0
+            calibrationOffset: 0,
+            orientation: 'portrait' // track current orientation
         };
 
         // Double-tap detection for recalibration
         this.lastTapTime = 0;
         this.doubleTapDelay = 300; // milliseconds
+
+        // Touch feedback for debugging
+        this.lastTouchX = 0;
+        this.lastTouchY = 0;
+        this.showTouchFeedback = false;
+        this.touchFeedbackTimer = 0;
 
         // Touch control button areas (will be set in setupTouchControls)
         this.touchButtons = {};
@@ -273,6 +280,10 @@ class MonkeyUnicycleGame {
                 this.setupResponsiveCanvas();
                 this.setupZoom();
                 this.setupTouchControls();
+                // Recalibrate tilt controls for new orientation
+                if (this.tiltControls.enabled) {
+                    this.recalibrateTilt();
+                }
             }, 500); // Longer delay for orientation change
         });
 
@@ -403,19 +414,68 @@ class MonkeyUnicycleGame {
         window.addEventListener('deviceorientation', (event) => {
             if (!this.tiltControls.enabled) return;
 
-            // Get tilt values
-            this.tiltControls.gamma = event.gamma || 0; // left/right tilt
-            this.tiltControls.beta = event.beta || 0;   // forward/backward tilt
+            // Detect current orientation
+            const orientation = this.getScreenOrientation();
 
-            // Auto-calibrate on first reading
-            if (!this.tiltControls.calibrated) {
-                this.tiltControls.calibrationOffset = this.tiltControls.gamma;
+            // Get appropriate tilt values based on orientation
+            let tiltValue = 0;
+            if (orientation === 'portrait') {
+                tiltValue = event.gamma || 0; // left/right tilt in portrait
+            } else if (orientation === 'landscape-primary') {
+                tiltValue = event.beta || 0; // forward/back becomes left/right in landscape
+            } else if (orientation === 'landscape-secondary') {
+                tiltValue = -(event.beta || 0); // inverted in reverse landscape
+            } else {
+                tiltValue = event.gamma || 0; // fallback to gamma
+            }
+
+            this.tiltControls.gamma = tiltValue;
+            this.tiltControls.beta = event.beta || 0;
+            this.tiltControls.orientation = orientation;
+
+            // Auto-calibrate on first reading or orientation change
+            if (!this.tiltControls.calibrated || this.tiltControls.lastOrientation !== orientation) {
+                this.tiltControls.calibrationOffset = tiltValue;
                 this.tiltControls.calibrated = true;
-                console.log('Tilt controls calibrated, offset:', this.tiltControls.calibrationOffset);
+                this.tiltControls.lastOrientation = orientation;
+                console.log('Tilt controls calibrated for', orientation, 'offset:', this.tiltControls.calibrationOffset);
             }
         });
 
         console.log('Tilt controls enabled');
+    }
+
+    getScreenOrientation() {
+        // Try modern API first
+        if (screen.orientation) {
+            return screen.orientation.type;
+        }
+
+        // Fallback to window orientation
+        const orientation = window.orientation;
+        if (orientation === 0) return 'portrait';
+        if (orientation === 90) return 'landscape-primary';
+        if (orientation === -90 || orientation === 270) return 'landscape-secondary';
+        if (orientation === 180) return 'portrait-secondary';
+
+        // Final fallback based on dimensions
+        return window.innerWidth > window.innerHeight ? 'landscape-primary' : 'portrait';
+    }
+
+    convertTouchX(clientX) {
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasX = clientX - rect.left;
+
+        // Convert canvas pixel coordinates to game coordinates
+        return (canvasX / rect.width) * this.width;
+    }
+
+    convertTouchY(clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const canvasY = clientY - rect.top;
+
+        // Convert canvas pixel coordinates to game coordinates
+        return (canvasY / rect.height) * this.height;
     }
 
     toggleTiltControls() {
@@ -436,6 +496,7 @@ class MonkeyUnicycleGame {
         if (this.tiltControls.enabled) {
             this.tiltControls.calibrated = false;
             this.tiltControls.calibrationOffset = 0;
+            this.tiltControls.lastOrientation = null; // Force recalibration on next reading
             console.log('Tilt controls recalibrated');
         }
     }
@@ -886,9 +947,8 @@ class MonkeyUnicycleGame {
         // Add mouse/click support for menu
         this.canvas.addEventListener('click', (e) => {
             if (this.showMenu) {
-                const rect = this.canvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / this.zoom; // Adjust for zoom
-                const y = (e.clientY - rect.top) / this.zoom;  // Adjust for zoom
+                const x = this.convertTouchX(e.clientX);
+                const y = this.convertTouchY(e.clientY);
                 this.handleMenuClick(x, y);
             }
             // Removed gameplay click handling - using HTML button instead
@@ -911,9 +971,8 @@ class MonkeyUnicycleGame {
         // Add mouse move tracking for hover effects
         this.canvas.addEventListener('mousemove', (e) => {
             if (this.showMenu) {
-                const rect = this.canvas.getBoundingClientRect();
-                this.mouseX = (e.clientX - rect.left) / this.zoom;
-                this.mouseY = (e.clientY - rect.top) / this.zoom;
+                this.mouseX = this.convertTouchX(e.clientX);
+                this.mouseY = this.convertTouchY(e.clientY);
                 this.updateHoverStates();
 
                 // Change cursor when hovering over clickable elements
@@ -950,9 +1009,8 @@ class MonkeyUnicycleGame {
 
             for (let i = 0; i < touches.length; i++) {
                 const touch = touches[i];
-                const rect = this.canvas.getBoundingClientRect();
-                const touchX = touch.clientX - rect.left;
-                const touchY = touch.clientY - rect.top;
+                const touchX = this.convertTouchX(touch.clientX);
+                const touchY = this.convertTouchY(touch.clientY);
 
                 this.handleTouchStart(touchX, touchY);
             }
@@ -1011,6 +1069,12 @@ class MonkeyUnicycleGame {
     }
 
     handleTouchStart(touchX, touchY) {
+        // Store touch position for feedback
+        this.lastTouchX = touchX;
+        this.lastTouchY = touchY;
+        this.showTouchFeedback = true;
+        this.touchFeedbackTimer = 60; // Show for 1 second at 60fps
+
         if (this.showInstructions) {
             // Store touch start position for scrolling
             this.touchStartY = touchY;
@@ -1027,10 +1091,8 @@ class MonkeyUnicycleGame {
         }
 
         if (this.showMenu) {
-            // Handle menu touches (same as mouse clicks)
-            const gameX = touchX / this.zoom;
-            const gameY = touchY / this.zoom;
-            this.handleMenuClick(gameX, gameY);
+            // Handle menu touches (coordinates already converted)
+            this.handleMenuClick(touchX, touchY);
             return;
         }
 
@@ -1859,8 +1921,10 @@ class MonkeyUnicycleGame {
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'top';
 
+            const orientation = this.tiltControls.orientation || 'unknown';
+            const orientationText = orientation.includes('landscape') ? 'Landscape' : 'Portrait';
             const statusText = this.tiltControls.calibrated ?
-                'Tilt to Move (Double-tap to recalibrate)' :
+                `Tilt to Move (${orientationText}) - Double-tap to recalibrate` :
                 'Calibrating Tilt...';
 
             this.ctx.fillText(statusText, window.innerWidth / 2, 10);
@@ -2479,7 +2543,7 @@ class MonkeyUnicycleGame {
         this.ctx.font = '14px Arial';
         this.ctx.fillStyle = '#2F4F4F';
         if (this.isMobile) {
-            const controlText = this.tiltControls.enabled ? 'Tilt to move' : 'Touch controls';
+            const controlText = this.tiltControls.enabled ? 'Tilt to move (works in any orientation)' : 'Touch controls';
             this.ctx.fillText(`Tap cities to play | ${controlText} | Toggle tilt above`, this.width / 2, this.height - 40);
         } else if (this.isTouchDevice) {
             this.ctx.fillText('Tap or click cities | Touch + keyboard | F11: Fullscreen', this.width / 2, this.height - 40);
@@ -2490,6 +2554,24 @@ class MonkeyUnicycleGame {
         // Show high score
         const highScore = localStorage.getItem('monkeyHighScore') || '0';
         this.ctx.fillText(`High Score: ${highScore}`, this.width / 2, this.height - 20);
+
+        // Touch feedback for debugging (mobile only)
+        if (this.isMobile && this.showTouchFeedback && this.touchFeedbackTimer > 0) {
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            this.ctx.beginPath();
+            this.ctx.arc(this.lastTouchX, this.lastTouchY, 20, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${Math.round(this.lastTouchX)}, ${Math.round(this.lastTouchY)}`, this.lastTouchX, this.lastTouchY + 5);
+
+            this.touchFeedbackTimer--;
+            if (this.touchFeedbackTimer <= 0) {
+                this.showTouchFeedback = false;
+            }
+        }
 
         this.ctx.textAlign = 'left'; // Reset alignment
     }
