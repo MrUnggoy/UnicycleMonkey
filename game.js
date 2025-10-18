@@ -480,19 +480,35 @@ class MonkeyUnicycleGame {
             };
         }
 
-        // Jump button - always at bottom center, larger size
+        // Jump button - positioned behind/below monkey area, larger size
+        const jumpButtonX = (window.innerWidth * 0.75) - (jumpButtonSize / 2); // 75% across screen (behind monkey)
+        const jumpButtonY = window.innerHeight - jumpButtonSize - (padding * 2); // Lower on screen
+
         this.touchButtons.jump = {
-            x: (window.innerWidth - jumpButtonSize) / 2, // Always center
-            y: window.innerHeight - jumpButtonSize - padding, // Bottom of screen
+            x: jumpButtonX,
+            y: jumpButtonY,
             width: jumpButtonSize,
             height: jumpButtonSize,
             label: 'JUMP'
         };
 
+        // Ensure jump button always exists on mobile
+        if (this.isMobile && !this.touchButtons.jump) {
+            console.warn('Jump button missing, creating fallback');
+            this.touchButtons.jump = {
+                x: (window.innerWidth * 0.75) - 50,
+                y: window.innerHeight - 120,
+                width: 100,
+                height: 100,
+                label: 'JUMP'
+            };
+        }
+
         console.log('Touch controls setup:', {
             tiltEnabled: this.tiltControls.enabled,
             jumpButton: this.touchButtons.jump,
-            screenSize: `${window.innerWidth}x${window.innerHeight}`
+            screenSize: `${window.innerWidth}x${window.innerHeight}`,
+            showControls: this.touchControls.showControls
         });
     }
 
@@ -1236,15 +1252,29 @@ class MonkeyUnicycleGame {
             if (touchX >= button.x && touchX <= button.x + button.width &&
                 touchY >= button.y && touchY <= button.y + button.height) {
 
+                console.log(`${buttonName} button pressed at ${touchX}, ${touchY}`);
+
                 if (buttonName === 'left') {
                     this.touchControls.leftPressed = true;
                 } else if (buttonName === 'right') {
                     this.touchControls.rightPressed = true;
                 } else if (buttonName === 'jump') {
                     this.touchControls.jumpPressed = true;
+                    console.log('Jump button activated!');
                 }
                 return;
             }
+        }
+
+        // Debug: show which buttons exist and their positions
+        if (this.isMobile && Object.keys(this.touchButtons).length > 0) {
+            console.log('Touch at', touchX, touchY, 'Buttons:', Object.keys(this.touchButtons).map(name => ({
+                name,
+                x: this.touchButtons[name].x,
+                y: this.touchButtons[name].y,
+                w: this.touchButtons[name].width,
+                h: this.touchButtons[name].height
+            })));
         }
     }
 
@@ -1285,7 +1315,14 @@ class MonkeyUnicycleGame {
             }
         }
 
-        const jumpPressed = (this.keys['ArrowUp'] || this.touchControls.jumpPressed) && this.monkey.onGround;
+        // Allow jump if on ground or very close to ground (coyote time)
+        const nearGround = Math.abs(this.monkey.y + this.monkey.height / 2 - this.groundY) < 5;
+        const jumpPressed = (this.keys['ArrowUp'] || this.touchControls.jumpPressed) && (this.monkey.onGround || nearGround);
+
+        // Debug jump input
+        if (this.touchControls.jumpPressed && this.isMobile) {
+            console.log('Jump pressed! OnGround:', this.monkey.onGround, 'NearGround:', nearGround, 'MonkeyY:', this.monkey.y, 'GroundY:', this.groundY);
+        }
 
         if (leftPressed) {
             this.monkey.velocityX -= 0.4; // More responsive acceleration
@@ -2034,26 +2071,29 @@ class MonkeyUnicycleGame {
 
             // Special styling for jump button
             if (buttonName === 'jump') {
-                // Jump button - make it round and more prominent
-                this.ctx.fillStyle = isPressed ? '#FF6B35' : '#FF8C42';
+                // Jump button - make it round and more prominent with pulsing effect
+                const pulseScale = 1 + Math.sin(Date.now() * 0.005) * 0.1; // Gentle pulsing
+                const radius = (button.width / 2) * pulseScale;
+
+                this.ctx.fillStyle = isPressed ? '#FF4500' : '#FF6B35';
                 this.ctx.beginPath();
                 this.ctx.arc(
                     button.x + button.width / 2,
                     button.y + button.height / 2,
-                    button.width / 2,
+                    radius,
                     0,
                     Math.PI * 2
                 );
                 this.ctx.fill();
 
-                // Jump button border
-                this.ctx.strokeStyle = isPressed ? '#E55A2B' : '#E67E22';
-                this.ctx.lineWidth = 4;
+                // Jump button border - thicker and more visible
+                this.ctx.strokeStyle = isPressed ? '#CC3300' : '#E55A2B';
+                this.ctx.lineWidth = 6;
                 this.ctx.stroke();
 
-                // Jump button label
+                // Jump button label - larger and more visible
                 this.ctx.fillStyle = '#FFFFFF';
-                this.ctx.font = `bold ${Math.min(button.width * 0.2, 16)}px Arial`;
+                this.ctx.font = `bold ${Math.min(button.width * 0.25, 20)}px Arial`;
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText(
@@ -2061,6 +2101,20 @@ class MonkeyUnicycleGame {
                     button.x + button.width / 2,
                     button.y + button.height / 2
                 );
+
+                // Add a subtle shadow for depth
+                this.ctx.globalAlpha = 0.3;
+                this.ctx.fillStyle = '#000000';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    button.x + button.width / 2 + 3,
+                    button.y + button.height / 2 + 3,
+                    radius,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+                this.ctx.globalAlpha = 0.7; // Reset alpha
             } else {
                 // Regular buttons (left/right)
                 this.ctx.fillStyle = isPressed ? '#4CAF50' : '#2196F3';
@@ -2746,6 +2800,23 @@ class MonkeyUnicycleGame {
 
             if (buttonPressed !== 'none') {
                 this.ctx.fillText(buttonPressed, this.lastTouchX, this.lastTouchY + 20);
+            }
+
+            // Show jump button area for debugging
+            if (this.touchButtons.jump) {
+                this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(
+                    this.touchButtons.jump.x,
+                    this.touchButtons.jump.y,
+                    this.touchButtons.jump.width,
+                    this.touchButtons.jump.height
+                );
+                this.ctx.fillText(
+                    `Jump: ${this.touchButtons.jump.x},${this.touchButtons.jump.y}`,
+                    this.touchButtons.jump.x,
+                    this.touchButtons.jump.y - 10
+                );
             }
 
             this.touchFeedbackTimer--;
