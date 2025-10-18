@@ -70,10 +70,17 @@ Convert Monkey Unicycle game to work properly on mobile devices with tilt contro
 - **Improved Balance Effect**: 0.12 (was 0.08) - more dynamic movement
 - **Higher Jump Power**: Increased across all devices for more excitement
 
+### **10. Fixed Menu Button Functionality** ✅
+- **Simplified Button Detection**: Removed complex responsive system causing issues
+- **Unified Coordinates**: Drawing and clicking now use identical positioning logic
+- **Touch & Mouse Support**: Both input methods work reliably
+- **Proper Hit Areas**: Button click areas exactly match visual buttons
+- **Sound Feedback**: Buttons play click sounds when pressed
+
 ## 🚧 **Still Working On**
-- Testing the new zippy movement feel across devices
-- Balancing speed vs. control for different skill levels
-- Fine-tuning tilt sensitivity for the faster speeds
+- Fine-tuning menu layout for different screen sizes
+- Testing button functionality across various devices
+- Optimizing button sizes for better mobile experience
 
 ## 📱 **Key Files Modified**
 - `game.js` - Main game logic with mobile optimizations

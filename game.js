@@ -329,7 +329,7 @@ class MonkeyUnicycleGame {
                 gravity: 0.30,      // Increased gravity for better feel
                 balanceGain: 0.005, // More sensitive balance for precise keyboard
                 jumpPower: 13,      // Higher jump power
-                maxSpeed: 6.5       // Much faster movement for larger screen
+                maxSpeed: 7.5       // Much faster movement for larger screen
             };
         }
 
@@ -1881,13 +1881,13 @@ class MonkeyUnicycleGame {
             return;
         }
 
-        // Handle city selection clicks with responsive dimensions
-        const cityButtonWidth = clickDims.buttonWidth;
-        const cityButtonHeight = clickDims.buttonHeight;
-        const cityButtonsPerRow = clickDims.buttonsPerRow;
-        const cityButtonSpacing = clickDims.buttonSpacing;
+        // Handle city selection clicks with simplified dimensions
+        const cityButtonWidth = this.isMobile ? Math.min(this.width * 0.18, 100) : 120;
+        const cityButtonHeight = this.isMobile ? Math.min(this.height * 0.08, 50) : 60;
+        const cityButtonsPerRow = this.isMobile ? (this.width < 600 ? 3 : 4) : 5;
+        const cityButtonSpacing = this.isMobile ? 8 : 10;
         const cityStartX = this.width / 2 - (cityButtonsPerRow * (cityButtonWidth + cityButtonSpacing)) / 2 + cityButtonWidth / 2;
-        const cityStartY = clickDims.cityButtonsStartY;
+        const cityStartY = this.isMobile ? this.height * 0.32 : 200;
 
         for (let i = 1; i <= Math.min(this.maxUnlockedLevel, this.maxCities); i++) {
             const row = Math.floor((i - 1) / cityButtonsPerRow);
@@ -1905,50 +1905,59 @@ class MonkeyUnicycleGame {
             }
         }
 
-        // Get responsive dimensions for click detection
-        const clickDims = this.getResponsiveMenuDimensions();
-        const clickMenuButtonWidth = clickDims.menuButtonWidth;
-        const clickMenuButtonHeight = clickDims.menuButtonHeight;
-        const clickMenuButtonY = clickDims.bottomButtonsY;
-        const clickButtonSpacing = this.isMobile ? 10 : 20;
+        // Simplified button detection - use same logic as drawing
+        const buttonWidth = this.isMobile ? Math.min(this.width * 0.25, 120) : 120;
+        const buttonHeight = this.isMobile ? Math.min(this.height * 0.06, 35) : 30;
+        const buttonY = this.height - (this.isMobile ? 80 : 80);
+        const buttonSpacing = this.isMobile ? 10 : 20;
 
-        // Calculate responsive button positions
-        const clickTotalButtonsWidth = (clickMenuButtonWidth * 3) + (clickButtonSpacing * 2);
-        const clickStartX = (this.width - clickTotalButtonsWidth) / 2;
+        // Calculate button positions (same as drawing)
+        const totalButtonsWidth = (buttonWidth * 3) + (buttonSpacing * 2);
+        const startX = (this.width - totalButtonsWidth) / 2;
+
+
 
         // Check for instructions button area (left)
-        const clickInstructionsButtonX = clickStartX;
-        if (mouseX >= clickInstructionsButtonX && mouseX <= clickInstructionsButtonX + clickMenuButtonWidth &&
-            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+        const instructionsButtonX = startX;
+        if (mouseX >= instructionsButtonX && mouseX <= instructionsButtonX + buttonWidth &&
+            mouseY >= buttonY && mouseY <= buttonY + buttonHeight) {
+            console.log('Instructions button clicked!');
             this.sounds.buttonClick();
             this.showInstructions = true;
+            return;
         }
 
         // Check for settings button area (center)
-        const clickSettingsButtonX = clickStartX + clickMenuButtonWidth + clickButtonSpacing;
-        if (mouseX >= clickSettingsButtonX && mouseX <= clickSettingsButtonX + clickMenuButtonWidth &&
-            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+        const settingsButtonX = startX + buttonWidth + buttonSpacing;
+        if (mouseX >= settingsButtonX && mouseX <= settingsButtonX + buttonWidth &&
+            mouseY >= buttonY && mouseY <= buttonY + buttonHeight) {
+            console.log('Settings button clicked!');
             this.sounds.buttonClick();
             this.showSettings = true;
+            return;
         }
 
         // Check for fullscreen button area (right)
-        const clickFullscreenButtonX = clickStartX + (clickMenuButtonWidth + clickButtonSpacing) * 2;
-        if (mouseX >= clickFullscreenButtonX && mouseX <= clickFullscreenButtonX + clickMenuButtonWidth &&
-            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+        const fullscreenButtonX = startX + (buttonWidth + buttonSpacing) * 2;
+        if (mouseX >= fullscreenButtonX && mouseX <= fullscreenButtonX + buttonWidth &&
+            mouseY >= buttonY && mouseY <= buttonY + buttonHeight) {
+            console.log('Fullscreen button clicked!');
             this.sounds.buttonClick();
             this.toggleFullscreen();
+            return;
         }
 
         // Check for tilt button area (mobile only, above other buttons)
         if (this.isMobile) {
-            const clickTiltButtonX = (this.width - clickMenuButtonWidth) / 2;
-            const clickTiltButtonY = clickDims.tiltButtonY;
+            const tiltButtonX = (this.width - buttonWidth) / 2;
+            const tiltButtonY = this.height - 120;
 
-            if (mouseX >= clickTiltButtonX && mouseX <= clickTiltButtonX + clickMenuButtonWidth &&
-                mouseY >= clickTiltButtonY && mouseY <= clickTiltButtonY + clickMenuButtonHeight) {
+            if (mouseX >= tiltButtonX && mouseX <= tiltButtonX + buttonWidth &&
+                mouseY >= tiltButtonY && mouseY <= tiltButtonY + buttonHeight) {
+                console.log('Tilt button clicked!');
                 this.sounds.buttonClick();
                 this.toggleTiltControls();
+                return;
             }
         }
     }
@@ -2788,14 +2797,14 @@ class MonkeyUnicycleGame {
             }
         }
 
-        // Responsive bottom menu buttons
-        const drawMenuButtonWidth = dims.menuButtonWidth;
-        const drawMenuButtonHeight = dims.menuButtonHeight;
-        const drawMenuButtonY = dims.bottomButtonsY;
+        // Simplified bottom menu buttons (matching click detection exactly)
+        const drawButtonWidth = this.isMobile ? Math.min(this.width * 0.25, 120) : 120;
+        const drawButtonHeight = this.isMobile ? Math.min(this.height * 0.06, 35) : 30;
+        const drawButtonY = this.height - (this.isMobile ? 80 : 80);
         const drawButtonSpacing = this.isMobile ? 10 : 20;
 
-        // Calculate positions to prevent overlapping
-        const drawTotalButtonsWidth = (drawMenuButtonWidth * 3) + (drawButtonSpacing * 2);
+        // Calculate positions (exactly same as click detection)
+        const drawTotalButtonsWidth = (drawButtonWidth * 3) + (drawButtonSpacing * 2);
         const drawStartX = (this.width - drawTotalButtonsWidth) / 2;
 
         // Instructions button (left)
@@ -2808,17 +2817,17 @@ class MonkeyUnicycleGame {
             this.ctx.strokeStyle = '#32CD32';
         }
 
-        this.ctx.fillRect(drawInstructionsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.fillRect(drawInstructionsButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(drawInstructionsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.strokeRect(drawInstructionsButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
 
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
+        this.ctx.font = `bold ${this.isMobile ? 12 : 14}px Arial`;
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('HOW TO PLAY', drawInstructionsButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
+        this.ctx.fillText('HOW TO PLAY', drawInstructionsButtonX + drawButtonWidth / 2, drawButtonY + drawButtonHeight / 2 + 5);
 
         // Settings button (center)
-        const drawSettingsButtonX = drawStartX + drawMenuButtonWidth + drawButtonSpacing;
+        const drawSettingsButtonX = drawStartX + drawButtonWidth + drawButtonSpacing;
         if (this.hoveredSettings) {
             this.ctx.fillStyle = '#5A7FE1';
             this.ctx.strokeStyle = '#4169E1';
