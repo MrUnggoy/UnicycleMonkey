@@ -8,9 +8,9 @@ class MonkeyUnicycleGame {
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         this.isTablet = this.isTouchDevice && (window.innerWidth >= 768 || window.innerHeight >= 768);
 
-        // Initialize base dimensions first
-        this.baseWidth = 800;
-        this.baseHeight = 400;
+        // Initialize base dimensions first - increased for better gameplay
+        this.baseWidth = 1200; // Increased from 800 for more horizontal view
+        this.baseHeight = 600;  // Increased from 400 for more vertical view
 
         // Load monkey body image (high-res 300px version)
         this.monkeyImage = new Image();
@@ -303,7 +303,7 @@ class MonkeyUnicycleGame {
         if (this.isMobile) {
             // Mobile phone settings - smaller screen, touch controls
             baseSettings = {
-                gravity: 0.12,      // Lower gravity for easier control on small screen
+                gravity: 0.25,      // Increased gravity for better feel
                 balanceGain: 0.003, // Less sensitive balance for touch/tilt
                 jumpPower: 10,      // Moderate jump power
                 maxSpeed: 3.5       // Slower for better control on small screen
@@ -311,7 +311,7 @@ class MonkeyUnicycleGame {
         } else if (this.isTouchDevice) {
             // Tablet settings - medium screen, touch controls
             baseSettings = {
-                gravity: 0.15,      // Medium gravity
+                gravity: 0.28,      // Increased gravity
                 balanceGain: 0.004, // Medium balance sensitivity
                 jumpPower: 11,      // Medium jump power
                 maxSpeed: 4         // Medium speed
@@ -319,7 +319,7 @@ class MonkeyUnicycleGame {
         } else {
             // Desktop settings - large screen, keyboard controls
             baseSettings = {
-                gravity: 0.18,      // Higher gravity for more challenge
+                gravity: 0.30,      // Increased gravity for better feel
                 balanceGain: 0.005, // More sensitive balance for precise keyboard
                 jumpPower: 12,      // Higher jump power
                 maxSpeed: 4.5       // Faster movement for larger screen
@@ -1395,12 +1395,12 @@ class MonkeyUnicycleGame {
         // Check banana collection
         this.checkBananaCollection();
 
-        // Update camera to follow monkey horizontally and vertically
-        this.camera.x = this.monkey.x - this.width / 3;
+        // Update camera to follow monkey horizontally and vertically - more zoomed out
+        this.camera.x = this.monkey.x - this.width / 2.2; // Changed from /3 to /2.2 for more zoom out
 
-        // Vertical camera following with adaptive smooth tracking
+        // Vertical camera following with adaptive smooth tracking - also more zoomed out
         const monkeyScreenY = this.monkey.y;
-        const idealCameraY = monkeyScreenY - this.height / 2; // Center monkey vertically
+        const idealCameraY = monkeyScreenY - this.height / 1.8; // Changed from /2 to /1.8 for more vertical space
 
         // Adaptive smoothing - faster when monkey is moving quickly vertically
         const verticalSpeed = Math.abs(this.monkey.velocityY);
@@ -2060,7 +2060,14 @@ class MonkeyUnicycleGame {
         this.ctx.save();
 
         // Reset any transforms to draw in screen coordinates
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.resetTransform();
+
+        // For mobile, we need to account for the canvas scaling
+        if (this.isMobile) {
+            const scaleX = this.canvas.width / window.innerWidth;
+            const scaleY = this.canvas.height / window.innerHeight;
+            this.ctx.scale(scaleX, scaleY);
+        }
 
         // Semi-transparent background for buttons
         this.ctx.globalAlpha = 0.7;
