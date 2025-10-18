@@ -55,10 +55,25 @@ Convert Monkey Unicycle game to work properly on mobile devices with tilt contro
 - **Zoomed Out Camera**: More gameplay area visible, monkey positioned better
 - **Larger Game Area**: Base dimensions increased from 800x400 to 1200x600
 
+### **8. Mobile Menu Optimization** ✅
+- **Responsive Scaling**: All menu elements scale based on screen size
+- **Fixed Button Overlapping**: Proper spacing prevents button overlap
+- **Sound Effects**: Button clicks and hovers now make sounds
+- **Touch-Friendly**: Larger buttons on mobile, better positioning
+- **Dynamic Layout**: Adapts to different screen sizes and orientations
+
+### **9. Speedy Monkey Improvements** ✅
+- **Increased Max Speed**: Mobile: 5.5, Tablet: 6.0, Desktop: 6.5 (was 3.5-4.5)
+- **Faster Acceleration**: 0.7 per frame (was 0.4) - much more responsive
+- **Reduced Friction**: 0.94 (was 0.92) - maintains speed better
+- **Enhanced Tilt Response**: 0.12 responsiveness, 0.9 max boost (was 0.08/0.6)
+- **Improved Balance Effect**: 0.12 (was 0.08) - more dynamic movement
+- **Higher Jump Power**: Increased across all devices for more excitement
+
 ## 🚧 **Still Working On**
-- Testing all fixes across different devices
-- Fine-tuning the new camera positioning
-- Verifying jump button works on all screen sizes
+- Testing the new zippy movement feel across devices
+- Balancing speed vs. control for different skill levels
+- Fine-tuning tilt sensitivity for the faster speeds
 
 ## 📱 **Key Files Modified**
 - `game.js` - Main game logic with mobile optimizations

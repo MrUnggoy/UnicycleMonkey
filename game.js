@@ -101,6 +101,14 @@ class MonkeyUnicycleGame {
         this.showTouchFeedback = false;
         this.touchFeedbackTimer = 0;
 
+        // Sound effects (using Web Audio API for mobile compatibility)
+        this.audioContext = null;
+        this.sounds = {
+            buttonClick: null,
+            buttonHover: null
+        };
+        this.initSounds();
+
         // Touch control button areas (will be set in setupTouchControls)
         this.touchButtons = {};
         this.lastTouchDistance = 0;
@@ -228,7 +236,6 @@ class MonkeyUnicycleGame {
             velocityY: 0,
             onGround: true,
             balance: 0, // -1 to 1, affects unicycle tilt
-            maxSpeed: 5,
             collisionCooldown: 0
         };
 
@@ -305,24 +312,24 @@ class MonkeyUnicycleGame {
             baseSettings = {
                 gravity: 0.25,      // Increased gravity for better feel
                 balanceGain: 0.003, // Less sensitive balance for touch/tilt
-                jumpPower: 10,      // Moderate jump power
-                maxSpeed: 3.5       // Slower for better control on small screen
+                jumpPower: 11,      // Increased jump power for more fun
+                maxSpeed: 5.5       // Much faster for more excitement!
             };
         } else if (this.isTouchDevice) {
             // Tablet settings - medium screen, touch controls
             baseSettings = {
                 gravity: 0.28,      // Increased gravity
                 balanceGain: 0.004, // Medium balance sensitivity
-                jumpPower: 11,      // Medium jump power
-                maxSpeed: 4         // Medium speed
+                jumpPower: 12,      // Increased jump power
+                maxSpeed: 6         // Faster speed
             };
         } else {
             // Desktop settings - large screen, keyboard controls
             baseSettings = {
                 gravity: 0.30,      // Increased gravity for better feel
                 balanceGain: 0.005, // More sensitive balance for precise keyboard
-                jumpPower: 12,      // Higher jump power
-                maxSpeed: 4.5       // Faster movement for larger screen
+                jumpPower: 13,      // Higher jump power
+                maxSpeed: 6.5       // Much faster movement for larger screen
             };
         }
 
@@ -389,6 +396,45 @@ class MonkeyUnicycleGame {
         return scaleFactor;
     }
 
+    initSounds() {
+        // Initialize Web Audio API for mobile-friendly sounds
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create simple sound effects using oscillators
+            this.sounds.buttonClick = () => this.playTone(800, 0.1, 'square');
+            this.sounds.buttonHover = () => this.playTone(600, 0.05, 'sine');
+        } catch (e) {
+            console.log('Audio not supported:', e);
+            // Fallback to silent functions
+            this.sounds.buttonClick = () => { };
+            this.sounds.buttonHover = () => { };
+        }
+    }
+
+    playTone(frequency, duration, type = 'sine') {
+        if (!this.audioContext) return;
+
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + duration);
+        } catch (e) {
+            console.log('Sound play failed:', e);
+        }
+    }
+
     updateDynamicSettings() {
         // Only update if user hasn't customized settings
         const hasCustomGravity = localStorage.getItem('gameGravity');
@@ -412,6 +458,44 @@ class MonkeyUnicycleGame {
         if (!hasCustomSpeed) this.settings.maxSpeed = newSettings.maxSpeed;
 
         console.log('Dynamic settings updated for screen change');
+    }
+
+    getResponsiveMenuDimensions() {
+        // Calculate responsive dimensions based on screen size
+        const isMobile = this.isMobile;
+        const screenWidth = this.width;
+        const screenHeight = this.height;
+
+        return {
+            // Title sizing
+            titleSize: isMobile ? Math.min(screenWidth * 0.08, 36) : 48,
+            subtitleSize: isMobile ? Math.min(screenWidth * 0.04, 18) : 24,
+
+            // City button sizing
+            buttonWidth: isMobile ? Math.min(screenWidth * 0.18, 100) : 120,
+            buttonHeight: isMobile ? Math.min(screenHeight * 0.08, 50) : 60,
+            buttonsPerRow: isMobile ? (screenWidth < 600 ? 3 : 4) : 5,
+            buttonSpacing: isMobile ? 8 : 10,
+
+            // Menu button sizing (Settings, Instructions, etc.)
+            menuButtonWidth: isMobile ? Math.min(screenWidth * 0.25, 120) : 120,
+            menuButtonHeight: isMobile ? Math.min(screenHeight * 0.06, 35) : 30,
+
+            // Positioning
+            titleY: isMobile ? screenHeight * 0.12 : 80,
+            subtitleY: isMobile ? screenHeight * 0.18 : 110,
+            selectCityY: isMobile ? screenHeight * 0.25 : 160,
+            cityButtonsStartY: isMobile ? screenHeight * 0.32 : 200,
+
+            // Bottom buttons positioning
+            bottomButtonsY: screenHeight - (isMobile ? 80 : 80),
+            tiltButtonY: screenHeight - (isMobile ? 120 : 120),
+
+            // Font sizes
+            selectCitySize: isMobile ? Math.min(screenWidth * 0.04, 16) : 20,
+            menuButtonSize: isMobile ? Math.min(screenWidth * 0.03, 14) : 14,
+            instructionSize: isMobile ? Math.min(screenWidth * 0.025, 12) : 14
+        };
     }
 
     setupResponsiveCanvas() {
@@ -1297,11 +1381,11 @@ class MonkeyUnicycleGame {
             const tiltValue = this.tiltControls.gamma - this.tiltControls.calibrationOffset;
             const deadzone = this.tiltControls.deadzone;
 
-            // Much more responsive tilt controls
+            // Super responsive tilt controls to match faster movement
             if (Math.abs(tiltValue) > deadzone) {
                 const tiltStrength = Math.abs(tiltValue);
-                const responsiveness = 0.08; // Increased from 0.02
-                const maxTiltBoost = 0.6; // Increased from 0.2
+                const responsiveness = 0.12; // Increased even more for zippy movement
+                const maxTiltBoost = 0.9; // Higher boost for faster response
 
                 if (tiltValue < -deadzone) {
                     leftPressed = true;
@@ -1325,13 +1409,13 @@ class MonkeyUnicycleGame {
         }
 
         if (leftPressed) {
-            this.monkey.velocityX -= 0.4; // More responsive acceleration
+            this.monkey.velocityX -= 0.7; // Much more responsive acceleration!
             if (this.monkey.onGround) {
                 this.monkey.balance -= this.settings.balanceGain; // Use setting
             }
         }
         if (rightPressed) {
-            this.monkey.velocityX += 0.4; // More responsive acceleration
+            this.monkey.velocityX += 0.7; // Much more responsive acceleration!
             if (this.monkey.onGround) {
                 this.monkey.balance += this.settings.balanceGain; // Use setting
             }
@@ -1346,12 +1430,12 @@ class MonkeyUnicycleGame {
         // Apply physics - improved feel
         this.monkey.velocityX = Math.max(-this.settings.maxSpeed,
             Math.min(this.settings.maxSpeed, this.monkey.velocityX));
-        this.monkey.velocityX *= 0.92; // Slightly less friction for smoother movement
+        this.monkey.velocityX *= 0.94; // Even less friction for zippier movement
 
-        // Balance affects movement - but only when on ground
+        // Balance affects movement - but only when on ground, more responsive
         this.monkey.balance = Math.max(-1, Math.min(1, this.monkey.balance));
         if (this.monkey.onGround) {
-            this.monkey.velocityX += this.monkey.balance * 0.08; // Reduced balance effect
+            this.monkey.velocityX += this.monkey.balance * 0.12; // Increased balance effect for zippier feel
         }
 
         // Gravity - use setting
@@ -1574,60 +1658,70 @@ class MonkeyUnicycleGame {
         this.hoveredFullscreenButton = false;
         this.hoveredInstructionsButton = false;
 
-        // Check city button hovers
-        const buttonWidth = 120;
-        const buttonHeight = 60;
-        const buttonsPerRow = 5;
-        const startX = this.width / 2 - (buttonsPerRow * (buttonWidth + 10)) / 2 + buttonWidth / 2;
-        const startY = 200;
+        // Check city button hovers with responsive dimensions
+        const cityHoverDims = this.getResponsiveMenuDimensions();
+        const cityHoverButtonWidth = cityHoverDims.buttonWidth;
+        const cityHoverButtonHeight = cityHoverDims.buttonHeight;
+        const cityHoverButtonsPerRow = cityHoverDims.buttonsPerRow;
+        const cityHoverButtonSpacing = cityHoverDims.buttonSpacing;
+        const cityHoverStartX = this.width / 2 - (cityHoverButtonsPerRow * (cityHoverButtonWidth + cityHoverButtonSpacing)) / 2 + cityHoverButtonWidth / 2;
+        const cityHoverStartY = cityHoverDims.cityButtonsStartY;
 
+        const previousHoveredCity = this.hoveredCity;
         this.hoveredCity = -1;
         this.hoveredTiltButton = false;
+
         for (let i = 1; i <= Math.min(this.maxUnlockedLevel, this.maxCities); i++) {
-            const row = Math.floor((i - 1) / buttonsPerRow);
-            const col = (i - 1) % buttonsPerRow;
-            const x = startX + col * (buttonWidth + 10);
-            const y = startY + row * (buttonHeight + 20);
+            const row = Math.floor((i - 1) / cityHoverButtonsPerRow);
+            const col = (i - 1) % cityHoverButtonsPerRow;
+            const x = cityHoverStartX + col * (cityHoverButtonWidth + cityHoverButtonSpacing);
+            const y = cityHoverStartY + row * (cityHoverButtonHeight + (cityHoverButtonSpacing * 2));
 
             // Check if mouse is over this city button
-            if (this.mouseX >= x - buttonWidth / 2 && this.mouseX <= x + buttonWidth / 2 &&
-                this.mouseY >= y - buttonHeight / 2 && this.mouseY <= y + buttonHeight / 2) {
+            if (this.mouseX >= x - cityHoverButtonWidth / 2 && this.mouseX <= x + cityHoverButtonWidth / 2 &&
+                this.mouseY >= y - cityHoverButtonHeight / 2 && this.mouseY <= y + cityHoverButtonHeight / 2) {
                 this.hoveredCity = i;
+                // Play hover sound if this is a new hover
+                if (previousHoveredCity !== i) {
+                    this.sounds.buttonHover();
+                }
                 break;
             }
         }
 
-        // Check settings button hover
-        this.hoveredSettings = (this.mouseY >= this.height - 80 && this.mouseY <= this.height - 50 &&
-            this.mouseX >= this.width / 2 - 60 && this.mouseX <= this.width / 2 + 60);
+        // Get responsive dimensions for hover detection
+        const hoverDims = this.getResponsiveMenuDimensions();
+        const menuButtonWidth = hoverDims.menuButtonWidth;
+        const menuButtonHeight = hoverDims.menuButtonHeight;
+        const menuButtonY = hoverDims.bottomButtonsY;
+        const hoverButtonSpacing = this.isMobile ? 10 : 20;
 
-        // Check instructions button hover
-        const instructionsButtonX = this.width / 2 - 180;
-        const instructionsButtonY = this.height - 80;
-        const instructionsButtonWidth = 100;
-        const instructionsButtonHeight = 30;
+        // Calculate responsive button positions
+        const hoverTotalButtonsWidth = (menuButtonWidth * 3) + (hoverButtonSpacing * 2);
+        const hoverStartX = (this.width - hoverTotalButtonsWidth) / 2;
 
-        this.hoveredInstructionsButton = (this.mouseY >= instructionsButtonY && this.mouseY <= instructionsButtonY + instructionsButtonHeight &&
-            this.mouseX >= instructionsButtonX && this.mouseX <= instructionsButtonX + instructionsButtonWidth);
+        // Check instructions button hover (left)
+        const instructionsButtonX = hoverStartX;
+        this.hoveredInstructionsButton = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
+            this.mouseX >= instructionsButtonX && this.mouseX <= instructionsButtonX + menuButtonWidth);
 
-        // Check fullscreen button hover
-        const fullscreenButtonX = this.width / 2 + 80;
-        const fullscreenButtonY = this.height - 80;
-        const fullscreenButtonWidth = 100;
-        const fullscreenButtonHeight = 30;
+        // Check settings button hover (center)
+        const settingsButtonX = hoverStartX + menuButtonWidth + hoverButtonSpacing;
+        this.hoveredSettings = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
+            this.mouseX >= settingsButtonX && this.mouseX <= settingsButtonX + menuButtonWidth);
 
-        this.hoveredFullscreenButton = (this.mouseY >= fullscreenButtonY && this.mouseY <= fullscreenButtonY + fullscreenButtonHeight &&
-            this.mouseX >= fullscreenButtonX && this.mouseX <= fullscreenButtonX + fullscreenButtonWidth);
+        // Check fullscreen button hover (right)
+        const fullscreenButtonX = hoverStartX + (menuButtonWidth + hoverButtonSpacing) * 2;
+        this.hoveredFullscreenButton = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
+            this.mouseX >= fullscreenButtonX && this.mouseX <= fullscreenButtonX + menuButtonWidth);
 
-        // Check tilt button hover (only show on mobile)
+        // Check tilt button hover (mobile only, above other buttons)
         if (this.isMobile) {
-            const tiltButtonX = this.width / 2 - 60;
-            const tiltButtonY = this.height - 120;
-            const tiltButtonWidth = 120;
-            const tiltButtonHeight = 30;
+            const tiltButtonX = (this.width - menuButtonWidth) / 2;
+            const tiltButtonY = hoverDims.tiltButtonY;
 
-            this.hoveredTiltButton = (this.mouseY >= tiltButtonY && this.mouseY <= tiltButtonY + tiltButtonHeight &&
-                this.mouseX >= tiltButtonX && this.mouseX <= tiltButtonX + tiltButtonWidth);
+            this.hoveredTiltButton = (this.mouseY >= tiltButtonY && this.mouseY <= tiltButtonY + menuButtonHeight &&
+                this.mouseX >= tiltButtonX && this.mouseX <= tiltButtonX + menuButtonWidth);
         }
     }
 
@@ -1787,68 +1881,75 @@ class MonkeyUnicycleGame {
             return;
         }
 
-        // Handle city selection clicks
-        const buttonWidth = 120;
-        const buttonHeight = 60;
-        const buttonsPerRow = 5;
-        const startX = this.width / 2 - (buttonsPerRow * (buttonWidth + 10)) / 2 + buttonWidth / 2;
-        const startY = 200;
+        // Handle city selection clicks with responsive dimensions
+        const cityButtonWidth = clickDims.buttonWidth;
+        const cityButtonHeight = clickDims.buttonHeight;
+        const cityButtonsPerRow = clickDims.buttonsPerRow;
+        const cityButtonSpacing = clickDims.buttonSpacing;
+        const cityStartX = this.width / 2 - (cityButtonsPerRow * (cityButtonWidth + cityButtonSpacing)) / 2 + cityButtonWidth / 2;
+        const cityStartY = clickDims.cityButtonsStartY;
 
         for (let i = 1; i <= Math.min(this.maxUnlockedLevel, this.maxCities); i++) {
-            const row = Math.floor((i - 1) / buttonsPerRow);
-            const col = (i - 1) % buttonsPerRow;
-            const x = startX + col * (buttonWidth + 10);
-            const y = startY + row * (buttonHeight + 20);
+            const row = Math.floor((i - 1) / cityButtonsPerRow);
+            const col = (i - 1) % cityButtonsPerRow;
+            const x = cityStartX + col * (cityButtonWidth + cityButtonSpacing);
+            const y = cityStartY + row * (cityButtonHeight + (cityButtonSpacing * 2));
 
             // Check if click is within button bounds
-            if (mouseX >= x - buttonWidth / 2 && mouseX <= x + buttonWidth / 2 &&
-                mouseY >= y - buttonHeight / 2 && mouseY <= y + buttonHeight / 2) {
+            if (mouseX >= x - cityButtonWidth / 2 && mouseX <= x + cityButtonWidth / 2 &&
+                mouseY >= y - cityButtonHeight / 2 && mouseY <= y + cityButtonHeight / 2) {
+                this.sounds.buttonClick();
                 this.selectedMenuLevel = i;
                 this.startGame(i);
                 break;
             }
         }
 
-        // Check for settings button area (bottom of screen)
-        if (mouseY >= this.height - 80 && mouseY <= this.height - 40) {
-            if (mouseX >= this.width / 2 - 60 && mouseX <= this.width / 2 + 60) {
-                this.showSettings = true;
-            }
-        }
+        // Get responsive dimensions for click detection
+        const clickDims = this.getResponsiveMenuDimensions();
+        const clickMenuButtonWidth = clickDims.menuButtonWidth;
+        const clickMenuButtonHeight = clickDims.menuButtonHeight;
+        const clickMenuButtonY = clickDims.bottomButtonsY;
+        const clickButtonSpacing = this.isMobile ? 10 : 20;
 
-        // Check for instructions button area
-        const instructionsButtonX = this.width / 2 - 180;
-        const instructionsButtonY = this.height - 80;
-        const instructionsButtonWidth = 100;
-        const instructionsButtonHeight = 30;
+        // Calculate responsive button positions
+        const clickTotalButtonsWidth = (clickMenuButtonWidth * 3) + (clickButtonSpacing * 2);
+        const clickStartX = (this.width - clickTotalButtonsWidth) / 2;
 
-        if (mouseX >= instructionsButtonX && mouseX <= instructionsButtonX + instructionsButtonWidth &&
-            mouseY >= instructionsButtonY && mouseY <= instructionsButtonY + instructionsButtonHeight) {
+        // Check for instructions button area (left)
+        const clickInstructionsButtonX = clickStartX;
+        if (mouseX >= clickInstructionsButtonX && mouseX <= clickInstructionsButtonX + clickMenuButtonWidth &&
+            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+            this.sounds.buttonClick();
             this.showInstructions = true;
         }
 
-        // Check for tilt button area (only on mobile)
-        if (this.isMobile) {
-            const tiltButtonX = this.width / 2 - 60;
-            const tiltButtonY = this.height - 120;
-            const tiltButtonWidth = 120;
-            const tiltButtonHeight = 30;
-
-            if (mouseX >= tiltButtonX && mouseX <= tiltButtonX + tiltButtonWidth &&
-                mouseY >= tiltButtonY && mouseY <= tiltButtonY + tiltButtonHeight) {
-                this.toggleTiltControls();
-            }
+        // Check for settings button area (center)
+        const clickSettingsButtonX = clickStartX + clickMenuButtonWidth + clickButtonSpacing;
+        if (mouseX >= clickSettingsButtonX && mouseX <= clickSettingsButtonX + clickMenuButtonWidth &&
+            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+            this.sounds.buttonClick();
+            this.showSettings = true;
         }
 
-        // Check for fullscreen button area
-        const fullscreenButtonX = this.width / 2 + 80;
-        const fullscreenButtonY = this.height - 80;
-        const fullscreenButtonWidth = 100;
-        const fullscreenButtonHeight = 30;
-
-        if (mouseX >= fullscreenButtonX && mouseX <= fullscreenButtonX + fullscreenButtonWidth &&
-            mouseY >= fullscreenButtonY && mouseY <= fullscreenButtonY + fullscreenButtonHeight) {
+        // Check for fullscreen button area (right)
+        const clickFullscreenButtonX = clickStartX + (clickMenuButtonWidth + clickButtonSpacing) * 2;
+        if (mouseX >= clickFullscreenButtonX && mouseX <= clickFullscreenButtonX + clickMenuButtonWidth &&
+            mouseY >= clickMenuButtonY && mouseY <= clickMenuButtonY + clickMenuButtonHeight) {
+            this.sounds.buttonClick();
             this.toggleFullscreen();
+        }
+
+        // Check for tilt button area (mobile only, above other buttons)
+        if (this.isMobile) {
+            const clickTiltButtonX = (this.width - clickMenuButtonWidth) / 2;
+            const clickTiltButtonY = clickDims.tiltButtonY;
+
+            if (mouseX >= clickTiltButtonX && mouseX <= clickTiltButtonX + clickMenuButtonWidth &&
+                mouseY >= clickTiltButtonY && mouseY <= clickTiltButtonY + clickMenuButtonHeight) {
+                this.sounds.buttonClick();
+                this.toggleTiltControls();
+            }
         }
     }
 
@@ -2608,38 +2709,42 @@ class MonkeyUnicycleGame {
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw title with high quality
+        // Get responsive dimensions
+        const dims = this.getResponsiveMenuDimensions();
+
+        // Draw title with responsive sizing
         this.ctx.fillStyle = '#2F4F4F';
         this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 4;
-        this.ctx.font = 'bold 48px "Arial", sans-serif';
+        this.ctx.lineWidth = this.isMobile ? 2 : 4;
+        this.ctx.font = `bold ${dims.titleSize}px "Arial", sans-serif`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
-        this.ctx.strokeText('MONKEY UNICYCLE', this.width / 2, 80);
-        this.ctx.fillText('MONKEY UNICYCLE', this.width / 2, 80);
+        this.ctx.strokeText('MONKEY UNICYCLE', this.width / 2, dims.titleY);
+        this.ctx.fillText('MONKEY UNICYCLE', this.width / 2, dims.titleY);
 
-        this.ctx.font = 'bold 24px "Arial", sans-serif';
+        this.ctx.font = `bold ${dims.subtitleSize}px "Arial", sans-serif`;
         this.ctx.fillStyle = '#8B4513';
-        this.ctx.fillText('WORLD TOUR', this.width / 2, 110);
+        this.ctx.fillText('WORLD TOUR', this.width / 2, dims.subtitleY);
 
         // Draw city selection
-        this.ctx.font = 'bold 20px Arial';
+        this.ctx.font = `bold ${dims.selectCitySize}px Arial`;
         this.ctx.fillStyle = '#2F4F4F';
-        this.ctx.fillText('SELECT CITY', this.width / 2, 160);
+        this.ctx.fillText('SELECT CITY', this.width / 2, dims.selectCityY);
 
-        // Draw city buttons
-        const buttonWidth = 120;
-        const buttonHeight = 60;
-        const buttonsPerRow = 5;
-        const startX = this.width / 2 - (buttonsPerRow * (buttonWidth + 10)) / 2 + buttonWidth / 2;
-        const startY = 200;
+        // Draw city buttons with responsive sizing
+        const drawCityButtonWidth = dims.buttonWidth;
+        const drawCityButtonHeight = dims.buttonHeight;
+        const drawCityButtonsPerRow = dims.buttonsPerRow;
+        const drawCityButtonSpacing = dims.buttonSpacing;
+        const drawCityStartX = this.width / 2 - (drawCityButtonsPerRow * (drawCityButtonWidth + drawCityButtonSpacing)) / 2 + drawCityButtonWidth / 2;
+        const drawCityStartY = dims.cityButtonsStartY;
 
         for (let i = 1; i <= this.maxCities; i++) {
-            const row = Math.floor((i - 1) / buttonsPerRow);
-            const col = (i - 1) % buttonsPerRow;
-            const x = startX + col * (buttonWidth + 10);
-            const y = startY + row * (buttonHeight + 20);
+            const row = Math.floor((i - 1) / drawCityButtonsPerRow);
+            const col = (i - 1) % drawCityButtonsPerRow;
+            const x = drawCityStartX + col * (drawCityButtonWidth + drawCityButtonSpacing);
+            const y = drawCityStartY + row * (drawCityButtonHeight + (drawCityButtonSpacing * 2));
 
             // Button background with hover effects
             if (i <= this.maxUnlockedLevel) {
@@ -2659,116 +2764,120 @@ class MonkeyUnicycleGame {
             }
 
             this.ctx.lineWidth = 3;
-            this.ctx.fillRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight);
-            this.ctx.strokeRect(x - buttonWidth / 2, y - buttonHeight / 2, buttonWidth, buttonHeight);
+            this.ctx.fillRect(x - drawCityButtonWidth / 2, y - drawCityButtonHeight / 2, drawCityButtonWidth, drawCityButtonHeight);
+            this.ctx.strokeRect(x - drawCityButtonWidth / 2, y - drawCityButtonHeight / 2, drawCityButtonWidth, drawCityButtonHeight);
 
-            // City name
+            // City name with responsive font size
             this.ctx.fillStyle = i <= this.maxUnlockedLevel ? '#2F4F4F' : '#808080';
-            this.ctx.font = 'bold 14px Arial';
+            const cityNameSize = Math.min(drawCityButtonWidth * 0.12, 14);
+            this.ctx.font = `bold ${cityNameSize}px Arial`;
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(this.cityNames[i - 1], x, y - 8);
+            this.ctx.fillText(this.cityNames[i - 1], x, y - drawCityButtonHeight * 0.15);
 
-            // City number
-            this.ctx.font = 'bold 12px Arial';
-            this.ctx.fillText(`City ${i}`, x, y + 8);
+            // City number with responsive font size
+            const cityNumberSize = Math.min(drawCityButtonWidth * 0.1, 12);
+            this.ctx.font = `bold ${cityNumberSize}px Arial`;
+            this.ctx.fillText(`City ${i}`, x, y + drawCityButtonHeight * 0.15);
 
             // Lock icon for locked cities
             if (i > this.maxUnlockedLevel) {
                 this.ctx.fillStyle = '#808080';
-                this.ctx.font = '20px Arial';
-                this.ctx.fillText('🔒', x, y + 20);
+                const lockSize = Math.min(drawCityButtonWidth * 0.2, 20);
+                this.ctx.font = `${lockSize}px Arial`;
+                this.ctx.fillText('🔒', x, y + drawCityButtonHeight * 0.3);
             }
         }
 
-        // Settings button with hover effect
-        if (this.hoveredSettings) {
-            this.ctx.fillStyle = '#5A7FE1'; // Lighter blue when hovered
-            this.ctx.strokeStyle = '#4169E1';
-        } else {
-            this.ctx.fillStyle = '#4169E1';
-            this.ctx.strokeStyle = '#1E90FF';
-        }
+        // Responsive bottom menu buttons
+        const drawMenuButtonWidth = dims.menuButtonWidth;
+        const drawMenuButtonHeight = dims.menuButtonHeight;
+        const drawMenuButtonY = dims.bottomButtonsY;
+        const drawButtonSpacing = this.isMobile ? 10 : 20;
 
-        this.ctx.fillRect(this.width / 2 - 60, this.height - 80, 120, 30);
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(this.width / 2 - 60, this.height - 80, 120, 30);
+        // Calculate positions to prevent overlapping
+        const drawTotalButtonsWidth = (drawMenuButtonWidth * 3) + (drawButtonSpacing * 2);
+        const drawStartX = (this.width - drawTotalButtonsWidth) / 2;
 
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 16px Arial';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText('SETTINGS', this.width / 2, this.height - 62);
-
-        // Instructions button with hover effect (left of settings)
-        const instructionsButtonX = this.width / 2 - 180;
-        const instructionsButtonY = this.height - 80;
-        const instructionsButtonWidth = 100;
-        const instructionsButtonHeight = 30;
-
+        // Instructions button (left)
+        const drawInstructionsButtonX = drawStartX;
         if (this.hoveredInstructionsButton) {
-            this.ctx.fillStyle = '#32CD32'; // Lighter green when hovered
+            this.ctx.fillStyle = '#32CD32';
             this.ctx.strokeStyle = '#228B22';
         } else {
             this.ctx.fillStyle = '#228B22';
             this.ctx.strokeStyle = '#32CD32';
         }
 
-        this.ctx.fillRect(instructionsButtonX, instructionsButtonY, instructionsButtonWidth, instructionsButtonHeight);
+        this.ctx.fillRect(drawInstructionsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(instructionsButtonX, instructionsButtonY, instructionsButtonWidth, instructionsButtonHeight);
+        this.ctx.strokeRect(drawInstructionsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
 
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 14px Arial';
+        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('HOW TO PLAY', instructionsButtonX + instructionsButtonWidth / 2, instructionsButtonY + instructionsButtonHeight / 2 + 5);
+        this.ctx.fillText('HOW TO PLAY', drawInstructionsButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
 
-        // Fullscreen button with hover effect
-        const fullscreenButtonX = this.width / 2 + 80;
-        const fullscreenButtonY = this.height - 80;
-        const fullscreenButtonWidth = 100;
-        const fullscreenButtonHeight = 30;
+        // Settings button (center)
+        const drawSettingsButtonX = drawStartX + drawMenuButtonWidth + drawButtonSpacing;
+        if (this.hoveredSettings) {
+            this.ctx.fillStyle = '#5A7FE1';
+            this.ctx.strokeStyle = '#4169E1';
+        } else {
+            this.ctx.fillStyle = '#4169E1';
+            this.ctx.strokeStyle = '#1E90FF';
+        }
 
+        this.ctx.fillRect(drawSettingsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(drawSettingsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('SETTINGS', drawSettingsButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
+
+        // Fullscreen button (right)
+        const drawFullscreenButtonX = drawStartX + (drawMenuButtonWidth + drawButtonSpacing) * 2;
         if (this.hoveredFullscreenButton) {
-            this.ctx.fillStyle = '#FF8C00'; // Lighter orange when hovered
+            this.ctx.fillStyle = '#FF8C00';
             this.ctx.strokeStyle = '#FF6347';
         } else {
             this.ctx.fillStyle = '#FF6347';
             this.ctx.strokeStyle = '#FF4500';
         }
 
-        this.ctx.fillRect(fullscreenButtonX, fullscreenButtonY, fullscreenButtonWidth, fullscreenButtonHeight);
+        this.ctx.fillRect(drawFullscreenButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(fullscreenButtonX, fullscreenButtonY, fullscreenButtonWidth, fullscreenButtonHeight);
+        this.ctx.strokeRect(drawFullscreenButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
 
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 14px Arial';
+        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
         this.ctx.textAlign = 'center';
         const fullscreenText = this.isFullscreen ? 'EXIT FULL' : 'FULLSCREEN';
-        this.ctx.fillText(fullscreenText, fullscreenButtonX + fullscreenButtonWidth / 2, fullscreenButtonY + fullscreenButtonHeight / 2 + 5);
+        this.ctx.fillText(fullscreenText, drawFullscreenButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
 
-        // Tilt controls button (mobile only)
+        // Tilt controls button (mobile only) - positioned above other buttons
         if (this.isMobile) {
-            const tiltButtonX = this.width / 2 - 60;
-            const tiltButtonY = this.height - 120;
-            const tiltButtonWidth = 120;
-            const tiltButtonHeight = 30;
+            const drawTiltButtonX = (this.width - drawMenuButtonWidth) / 2;
+            const drawTiltButtonY = dims.tiltButtonY;
 
             if (this.hoveredTiltButton) {
-                this.ctx.fillStyle = this.tiltControls.enabled ? '#FF6B6B' : '#4ECDC4'; // Different colors for enabled/disabled
+                this.ctx.fillStyle = this.tiltControls.enabled ? '#FF6B6B' : '#4ECDC4';
                 this.ctx.strokeStyle = this.tiltControls.enabled ? '#FF5252' : '#26A69A';
             } else {
                 this.ctx.fillStyle = this.tiltControls.enabled ? '#FF5252' : '#26A69A';
                 this.ctx.strokeStyle = this.tiltControls.enabled ? '#D32F2F' : '#00695C';
             }
 
-            this.ctx.fillRect(tiltButtonX, tiltButtonY, tiltButtonWidth, tiltButtonHeight);
+            this.ctx.fillRect(drawTiltButtonX, drawTiltButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
             this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(tiltButtonX, tiltButtonY, tiltButtonWidth, tiltButtonHeight);
+            this.ctx.strokeRect(drawTiltButtonX, drawTiltButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
 
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.font = 'bold 12px Arial';
+            this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
             this.ctx.textAlign = 'center';
             const tiltText = this.tiltControls.enabled ? 'TILT: ON' : 'TILT: OFF';
-            this.ctx.fillText(tiltText, tiltButtonX + tiltButtonWidth / 2, tiltButtonY + tiltButtonHeight / 2 + 4);
+            this.ctx.fillText(tiltText, drawTiltButtonX + drawMenuButtonWidth / 2, drawTiltButtonY + drawMenuButtonHeight / 2 + 4);
         }
 
         // Instructions (adaptive for device type)
