@@ -82,8 +82,8 @@ class MonkeyUnicycleGame {
         // Tilt controls for mobile
         this.tiltControls = {
             enabled: this.isMobile,
-            sensitivity: 0.3,
-            deadzone: 5, // degrees
+            sensitivity: 0.8, // Increased sensitivity
+            deadzone: 2, // Much smaller deadzone - only 2 degrees
             gamma: 0, // left/right tilt
             beta: 0,  // forward/backward tilt
             calibrated: false,
@@ -128,13 +128,8 @@ class MonkeyUnicycleGame {
             tiltEnabled: this.tiltControls.enabled
         });
 
-        // Game settings with kid-friendly defaults (easier for ages 3-6)
-        this.settings = {
-            gravity: parseFloat(localStorage.getItem('gameGravity') || '0.18'), // Reduced gravity for easier jumping
-            balanceGain: parseFloat(localStorage.getItem('gameBalanceGain') || '0.005'), // Less sensitive balance
-            jumpPower: parseFloat(localStorage.getItem('gameJumpPower') || '12'), // Higher jump power
-            maxSpeed: parseFloat(localStorage.getItem('gameMaxSpeed') || '4') // Slightly slower for better control
-        };
+        // Dynamic game settings based on device and screen size
+        this.settings = this.calculateDynamicSettings();
 
         // City names and themes for theming
         this.cityNames = [
@@ -272,6 +267,8 @@ class MonkeyUnicycleGame {
                 this.setupResponsiveCanvas();
                 this.setupZoom();
                 this.setupTouchControls();
+                // Recalculate physics settings for new screen size
+                this.updateDynamicSettings();
             }, 100);
         });
 
@@ -284,11 +281,137 @@ class MonkeyUnicycleGame {
                 if (this.tiltControls.enabled) {
                     this.recalibrateTilt();
                 }
+                // Recalculate physics settings for new screen dimensions
+                this.updateDynamicSettings();
             }, 500); // Longer delay for orientation change
         });
 
         // Start game loop
         this.gameLoop();
+    }
+
+    calculateDynamicSettings() {
+        // Get screen dimensions for scaling
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const screenArea = screenWidth * screenHeight;
+        const aspectRatio = screenWidth / screenHeight;
+
+        // Base settings for different device types
+        let baseSettings;
+
+        if (this.isMobile) {
+            // Mobile phone settings - smaller screen, touch controls
+            baseSettings = {
+                gravity: 0.12,      // Lower gravity for easier control on small screen
+                balanceGain: 0.003, // Less sensitive balance for touch/tilt
+                jumpPower: 10,      // Moderate jump power
+                maxSpeed: 3.5       // Slower for better control on small screen
+            };
+        } else if (this.isTouchDevice) {
+            // Tablet settings - medium screen, touch controls
+            baseSettings = {
+                gravity: 0.15,      // Medium gravity
+                balanceGain: 0.004, // Medium balance sensitivity
+                jumpPower: 11,      // Medium jump power
+                maxSpeed: 4         // Medium speed
+            };
+        } else {
+            // Desktop settings - large screen, keyboard controls
+            baseSettings = {
+                gravity: 0.18,      // Higher gravity for more challenge
+                balanceGain: 0.005, // More sensitive balance for precise keyboard
+                jumpPower: 12,      // Higher jump power
+                maxSpeed: 4.5       // Faster movement for larger screen
+            };
+        }
+
+        // Scale settings based on screen size
+        const scaleFactor = this.calculateScreenScaleFactor(screenArea, aspectRatio);
+
+        // Apply scaling to physics settings
+        const scaledSettings = {
+            gravity: baseSettings.gravity * scaleFactor.gravity,
+            balanceGain: baseSettings.balanceGain * scaleFactor.balance,
+            jumpPower: baseSettings.jumpPower * scaleFactor.jump,
+            maxSpeed: baseSettings.maxSpeed * scaleFactor.speed
+        };
+
+        // Allow user overrides from localStorage (if they've customized)
+        const finalSettings = {
+            gravity: parseFloat(localStorage.getItem('gameGravity') || scaledSettings.gravity.toString()),
+            balanceGain: parseFloat(localStorage.getItem('gameBalanceGain') || scaledSettings.balanceGain.toString()),
+            jumpPower: parseFloat(localStorage.getItem('gameJumpPower') || scaledSettings.jumpPower.toString()),
+            maxSpeed: parseFloat(localStorage.getItem('gameMaxSpeed') || scaledSettings.maxSpeed.toString())
+        };
+
+        console.log('Dynamic settings calculated:', {
+            deviceType: this.isMobile ? 'mobile' : this.isTouchDevice ? 'tablet' : 'desktop',
+            screenSize: `${screenWidth}x${screenHeight}`,
+            scaleFactor: scaleFactor,
+            finalSettings: finalSettings
+        });
+
+        return finalSettings;
+    }
+
+    calculateScreenScaleFactor(screenArea, aspectRatio) {
+        // Reference screen area (1920x1080 desktop)
+        const referenceArea = 1920 * 1080;
+        const areaRatio = screenArea / referenceArea;
+
+        // Calculate scale factors for different physics aspects
+        const scaleFactor = {
+            // Gravity should be lower on smaller screens (easier to control)
+            gravity: Math.max(0.6, Math.min(1.4, 1.0 - (1.0 - areaRatio) * 0.3)),
+
+            // Balance should be less sensitive on smaller screens
+            balance: Math.max(0.5, Math.min(1.2, 0.8 + areaRatio * 0.4)),
+
+            // Jump power should be relatively consistent but slightly lower on small screens
+            jump: Math.max(0.8, Math.min(1.2, 0.9 + areaRatio * 0.3)),
+
+            // Speed should scale with screen size (more room = faster movement)
+            speed: Math.max(0.7, Math.min(1.3, 0.8 + areaRatio * 0.5))
+        };
+
+        // Adjust for extreme aspect ratios (very wide or very tall screens)
+        if (aspectRatio > 2.0) {
+            // Very wide screen - increase horizontal movement
+            scaleFactor.speed *= 1.2;
+            scaleFactor.balance *= 0.9;
+        } else if (aspectRatio < 0.8) {
+            // Very tall screen (portrait mobile) - decrease movement speed
+            scaleFactor.speed *= 0.8;
+            scaleFactor.gravity *= 0.9;
+        }
+
+        return scaleFactor;
+    }
+
+    updateDynamicSettings() {
+        // Only update if user hasn't customized settings
+        const hasCustomGravity = localStorage.getItem('gameGravity');
+        const hasCustomBalance = localStorage.getItem('gameBalanceGain');
+        const hasCustomJump = localStorage.getItem('gameJumpPower');
+        const hasCustomSpeed = localStorage.getItem('gameMaxSpeed');
+
+        // If user has customized settings, don't override them
+        if (hasCustomGravity && hasCustomBalance && hasCustomJump && hasCustomSpeed) {
+            console.log('User has custom settings, skipping dynamic update');
+            return;
+        }
+
+        // Recalculate settings for new screen dimensions
+        const newSettings = this.calculateDynamicSettings();
+
+        // Only update settings that haven't been customized
+        if (!hasCustomGravity) this.settings.gravity = newSettings.gravity;
+        if (!hasCustomBalance) this.settings.balanceGain = newSettings.balanceGain;
+        if (!hasCustomJump) this.settings.jumpPower = newSettings.jumpPower;
+        if (!hasCustomSpeed) this.settings.maxSpeed = newSettings.maxSpeed;
+
+        console.log('Dynamic settings updated for screen change');
     }
 
     setupResponsiveCanvas() {
@@ -330,9 +453,13 @@ class MonkeyUnicycleGame {
     setupTouchControls() {
         if (!this.touchControls.showControls) return;
 
+        // Clear existing buttons
+        this.touchButtons = {};
+
         // Touch control button dimensions and positions
-        const buttonSize = this.isMobile ? 60 : 80;
-        const padding = 20;
+        const buttonSize = this.isMobile ? 80 : 80; // Larger buttons for mobile
+        const jumpButtonSize = this.isMobile ? 100 : 80; // Even larger jump button
+        const padding = 15;
 
         // Left/Right movement buttons (bottom left) - only show if tilt is disabled
         if (!this.tiltControls.enabled) {
@@ -345,7 +472,7 @@ class MonkeyUnicycleGame {
             };
 
             this.touchButtons.right = {
-                x: padding + buttonSize + 10,
+                x: padding + buttonSize + 15,
                 y: window.innerHeight - buttonSize - padding,
                 width: buttonSize,
                 height: buttonSize,
@@ -353,16 +480,20 @@ class MonkeyUnicycleGame {
             };
         }
 
-        // Jump button (bottom center for tilt, bottom right for touch)
+        // Jump button - always at bottom center, larger size
         this.touchButtons.jump = {
-            x: this.tiltControls.enabled ?
-                (window.innerWidth / 2 - buttonSize / 2) :
-                (window.innerWidth - buttonSize - padding),
-            y: window.innerHeight - buttonSize - padding,
-            width: buttonSize,
-            height: buttonSize,
-            label: '↑'
+            x: (window.innerWidth - jumpButtonSize) / 2, // Always center
+            y: window.innerHeight - jumpButtonSize - padding, // Bottom of screen
+            width: jumpButtonSize,
+            height: jumpButtonSize,
+            label: 'JUMP'
         };
+
+        console.log('Touch controls setup:', {
+            tiltEnabled: this.tiltControls.enabled,
+            jumpButton: this.touchButtons.jump,
+            screenSize: `${window.innerWidth}x${window.innerHeight}`
+        });
     }
 
     setupTiltControls() {
@@ -1136,16 +1267,21 @@ class MonkeyUnicycleGame {
             const tiltValue = this.tiltControls.gamma - this.tiltControls.calibrationOffset;
             const deadzone = this.tiltControls.deadzone;
 
-            // Apply tilt sensitivity and make it more responsive
-            const tiltStrength = Math.abs(tiltValue) - deadzone;
-            if (tiltValue < -deadzone) {
-                leftPressed = true;
-                // Add proportional movement based on tilt strength
-                this.monkey.velocityX -= Math.min(tiltStrength * 0.02, 0.2);
-            } else if (tiltValue > deadzone) {
-                rightPressed = true;
-                // Add proportional movement based on tilt strength
-                this.monkey.velocityX += Math.min(tiltStrength * 0.02, 0.2);
+            // Much more responsive tilt controls
+            if (Math.abs(tiltValue) > deadzone) {
+                const tiltStrength = Math.abs(tiltValue);
+                const responsiveness = 0.08; // Increased from 0.02
+                const maxTiltBoost = 0.6; // Increased from 0.2
+
+                if (tiltValue < -deadzone) {
+                    leftPressed = true;
+                    // Direct velocity adjustment for immediate response
+                    this.monkey.velocityX -= Math.min(tiltStrength * responsiveness, maxTiltBoost);
+                } else if (tiltValue > deadzone) {
+                    rightPressed = true;
+                    // Direct velocity adjustment for immediate response
+                    this.monkey.velocityX += Math.min(tiltStrength * responsiveness, maxTiltBoost);
+                }
             }
         }
 
@@ -1351,12 +1487,16 @@ class MonkeyUnicycleGame {
     }
 
     resetToDefaults() {
-        this.settings = {
-            gravity: 0.25,
-            balanceGain: 0.008,
-            jumpPower: 10,
-            maxSpeed: 5
-        };
+        // Clear any custom settings from localStorage
+        localStorage.removeItem('gameGravity');
+        localStorage.removeItem('gameBalanceGain');
+        localStorage.removeItem('gameJumpPower');
+        localStorage.removeItem('gameMaxSpeed');
+
+        // Recalculate dynamic settings for current device
+        this.settings = this.calculateDynamicSettings();
+
+        console.log('Settings reset to dynamic defaults for current device');
     }
 
     saveSettings() {
@@ -1892,25 +2032,56 @@ class MonkeyUnicycleGame {
         for (const [buttonName, button] of Object.entries(this.touchButtons)) {
             const isPressed = this.touchControls[buttonName + 'Pressed'];
 
-            // Button background
-            this.ctx.fillStyle = isPressed ? '#4CAF50' : '#2196F3';
-            this.ctx.fillRect(button.x, button.y, button.width, button.height);
+            // Special styling for jump button
+            if (buttonName === 'jump') {
+                // Jump button - make it round and more prominent
+                this.ctx.fillStyle = isPressed ? '#FF6B35' : '#FF8C42';
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    button.x + button.width / 2,
+                    button.y + button.height / 2,
+                    button.width / 2,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
 
-            // Button border
-            this.ctx.strokeStyle = isPressed ? '#45a049' : '#1976D2';
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(button.x, button.y, button.width, button.height);
+                // Jump button border
+                this.ctx.strokeStyle = isPressed ? '#E55A2B' : '#E67E22';
+                this.ctx.lineWidth = 4;
+                this.ctx.stroke();
 
-            // Button label
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.font = `bold ${button.width * 0.4}px Arial`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(
-                button.label,
-                button.x + button.width / 2,
-                button.y + button.height / 2
-            );
+                // Jump button label
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = `bold ${Math.min(button.width * 0.2, 16)}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(
+                    button.label,
+                    button.x + button.width / 2,
+                    button.y + button.height / 2
+                );
+            } else {
+                // Regular buttons (left/right)
+                this.ctx.fillStyle = isPressed ? '#4CAF50' : '#2196F3';
+                this.ctx.fillRect(button.x, button.y, button.width, button.height);
+
+                // Button border
+                this.ctx.strokeStyle = isPressed ? '#45a049' : '#1976D2';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(button.x, button.y, button.width, button.height);
+
+                // Button label
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.font = `bold ${button.width * 0.4}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(
+                    button.label,
+                    button.x + button.width / 2,
+                    button.y + button.height / 2
+                );
+            }
         }
 
         // Show tilt control status if enabled
@@ -2567,6 +2738,16 @@ class MonkeyUnicycleGame {
             this.ctx.textAlign = 'center';
             this.ctx.fillText(`${Math.round(this.lastTouchX)}, ${Math.round(this.lastTouchY)}`, this.lastTouchX, this.lastTouchY + 5);
 
+            // Show which button was pressed
+            let buttonPressed = 'none';
+            if (this.touchControls.jumpPressed) buttonPressed = 'JUMP';
+            else if (this.touchControls.leftPressed) buttonPressed = 'LEFT';
+            else if (this.touchControls.rightPressed) buttonPressed = 'RIGHT';
+
+            if (buttonPressed !== 'none') {
+                this.ctx.fillText(buttonPressed, this.lastTouchX, this.lastTouchY + 20);
+            }
+
             this.touchFeedbackTimer--;
             if (this.touchFeedbackTimer <= 0) {
                 this.showTouchFeedback = false;
@@ -2668,6 +2849,12 @@ class MonkeyUnicycleGame {
         this.ctx.textAlign = 'center';
         this.ctx.fillText('GAME SETTINGS', this.width / 2, 80);
 
+        // Dynamic settings indicator
+        const deviceType = this.isMobile ? 'Mobile' : this.isTouchDevice ? 'Tablet' : 'Desktop';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillStyle = '#90EE90';
+        this.ctx.fillText(`Optimized for ${deviceType} (${window.innerWidth}x${window.innerHeight})`, this.width / 2, 110);
+
         // Settings display with selection highlighting
         this.ctx.font = '20px Arial';
         this.ctx.textAlign = 'left';
@@ -2733,7 +2920,7 @@ class MonkeyUnicycleGame {
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.font = (this.hoveredResetButton || isResetSelected) ? 'bold 15px Arial' : 'bold 14px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('RESET DEFAULTS', resetButtonX + resetButtonWidth / 2, resetButtonY + resetButtonHeight / 2 + 5);
+        this.ctx.fillText('RESET TO DYNAMIC', resetButtonX + resetButtonWidth / 2, resetButtonY + resetButtonHeight / 2 + 5);
 
         // Show Enter prompt when selected
         if (isResetSelected) {
@@ -2782,7 +2969,7 @@ class MonkeyUnicycleGame {
         this.ctx.fillStyle = '#AAAAAA';
         this.ctx.font = '14px Arial';
         this.ctx.fillText('UP/DOWN: Navigate | LEFT/RIGHT: Adjust Value | ENTER: Activate', this.width / 2, this.height - 70);
-        this.ctx.fillText('R: Reset to Defaults | ESC: Save and Return', this.width / 2, this.height - 50);
+        this.ctx.fillText('R: Reset to Dynamic | ESC: Save and Return', this.width / 2, this.height - 50);
         this.ctx.fillText('Navigate to Back or Reset buttons with arrows, then press ENTER', this.width / 2, this.height - 30);
 
         this.ctx.textAlign = 'left'; // Reset alignment
