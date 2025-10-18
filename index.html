@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Monkey Unicycle Adventure</title>
     <style>
         body {
@@ -13,6 +16,11 @@
             overflow: hidden; /* Prevent scrolling on mobile */
             width: 100vw;
             height: 100vh;
+            position: fixed; /* Prevent mobile browser UI from affecting layout */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         
         #gameContainer {
@@ -33,7 +41,11 @@
             position: absolute;
             top: 0;
             left: 0;
+            width: 100vw !important;
+            height: 100vh !important;
             touch-action: none; /* Prevent default touch behaviors */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
         }
         
 
