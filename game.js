@@ -1689,39 +1689,38 @@ class MonkeyUnicycleGame {
             }
         }
 
-        // Get responsive dimensions for hover detection
-        const hoverDims = this.getResponsiveMenuDimensions();
-        const menuButtonWidth = hoverDims.menuButtonWidth;
-        const menuButtonHeight = hoverDims.menuButtonHeight;
-        const menuButtonY = hoverDims.bottomButtonsY;
+        // Simplified hover detection (matching click detection and drawing)
+        const hoverButtonWidth = this.isMobile ? Math.min(this.width * 0.25, 120) : 120;
+        const hoverButtonHeight = this.isMobile ? Math.min(this.height * 0.06, 35) : 30;
+        const hoverButtonY = this.height - (this.isMobile ? 80 : 80);
         const hoverButtonSpacing = this.isMobile ? 10 : 20;
 
-        // Calculate responsive button positions
-        const hoverTotalButtonsWidth = (menuButtonWidth * 3) + (hoverButtonSpacing * 2);
+        // Calculate button positions (same as click detection and drawing)
+        const hoverTotalButtonsWidth = (hoverButtonWidth * 3) + (hoverButtonSpacing * 2);
         const hoverStartX = (this.width - hoverTotalButtonsWidth) / 2;
 
         // Check instructions button hover (left)
-        const instructionsButtonX = hoverStartX;
-        this.hoveredInstructionsButton = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
-            this.mouseX >= instructionsButtonX && this.mouseX <= instructionsButtonX + menuButtonWidth);
+        const hoverInstructionsButtonX = hoverStartX;
+        this.hoveredInstructionsButton = (this.mouseY >= hoverButtonY && this.mouseY <= hoverButtonY + hoverButtonHeight &&
+            this.mouseX >= hoverInstructionsButtonX && this.mouseX <= hoverInstructionsButtonX + hoverButtonWidth);
 
         // Check settings button hover (center)
-        const settingsButtonX = hoverStartX + menuButtonWidth + hoverButtonSpacing;
-        this.hoveredSettings = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
-            this.mouseX >= settingsButtonX && this.mouseX <= settingsButtonX + menuButtonWidth);
+        const hoverSettingsButtonX = hoverStartX + hoverButtonWidth + hoverButtonSpacing;
+        this.hoveredSettings = (this.mouseY >= hoverButtonY && this.mouseY <= hoverButtonY + hoverButtonHeight &&
+            this.mouseX >= hoverSettingsButtonX && this.mouseX <= hoverSettingsButtonX + hoverButtonWidth);
 
         // Check fullscreen button hover (right)
-        const fullscreenButtonX = hoverStartX + (menuButtonWidth + hoverButtonSpacing) * 2;
-        this.hoveredFullscreenButton = (this.mouseY >= menuButtonY && this.mouseY <= menuButtonY + menuButtonHeight &&
-            this.mouseX >= fullscreenButtonX && this.mouseX <= fullscreenButtonX + menuButtonWidth);
+        const hoverFullscreenButtonX = hoverStartX + (hoverButtonWidth + hoverButtonSpacing) * 2;
+        this.hoveredFullscreenButton = (this.mouseY >= hoverButtonY && this.mouseY <= hoverButtonY + hoverButtonHeight &&
+            this.mouseX >= hoverFullscreenButtonX && this.mouseX <= hoverFullscreenButtonX + hoverButtonWidth);
 
         // Check tilt button hover (mobile only, above other buttons)
         if (this.isMobile) {
-            const tiltButtonX = (this.width - menuButtonWidth) / 2;
-            const tiltButtonY = hoverDims.tiltButtonY;
+            const hoverTiltButtonX = (this.width - hoverButtonWidth) / 2;
+            const hoverTiltButtonY = this.height - 120;
 
-            this.hoveredTiltButton = (this.mouseY >= tiltButtonY && this.mouseY <= tiltButtonY + menuButtonHeight &&
-                this.mouseX >= tiltButtonX && this.mouseX <= tiltButtonX + menuButtonWidth);
+            this.hoveredTiltButton = (this.mouseY >= hoverTiltButtonY && this.mouseY <= hoverTiltButtonY + hoverButtonHeight &&
+                this.mouseX >= hoverTiltButtonX && this.mouseX <= hoverTiltButtonX + hoverButtonWidth);
         }
     }
 
@@ -2836,17 +2835,17 @@ class MonkeyUnicycleGame {
             this.ctx.strokeStyle = '#1E90FF';
         }
 
-        this.ctx.fillRect(drawSettingsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.fillRect(drawSettingsButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(drawSettingsButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.strokeRect(drawSettingsButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
 
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
+        this.ctx.font = `bold ${this.isMobile ? 12 : 14}px Arial`;
         this.ctx.textAlign = 'center';
-        this.ctx.fillText('SETTINGS', drawSettingsButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
+        this.ctx.fillText('SETTINGS', drawSettingsButtonX + drawButtonWidth / 2, drawButtonY + drawButtonHeight / 2 + 5);
 
         // Fullscreen button (right)
-        const drawFullscreenButtonX = drawStartX + (drawMenuButtonWidth + drawButtonSpacing) * 2;
+        const drawFullscreenButtonX = drawStartX + (drawButtonWidth + drawButtonSpacing) * 2;
         if (this.hoveredFullscreenButton) {
             this.ctx.fillStyle = '#FF8C00';
             this.ctx.strokeStyle = '#FF6347';
@@ -2855,20 +2854,20 @@ class MonkeyUnicycleGame {
             this.ctx.strokeStyle = '#FF4500';
         }
 
-        this.ctx.fillRect(drawFullscreenButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.fillRect(drawFullscreenButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(drawFullscreenButtonX, drawMenuButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+        this.ctx.strokeRect(drawFullscreenButtonX, drawButtonY, drawButtonWidth, drawButtonHeight);
 
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
+        this.ctx.font = `bold ${this.isMobile ? 12 : 14}px Arial`;
         this.ctx.textAlign = 'center';
         const fullscreenText = this.isFullscreen ? 'EXIT FULL' : 'FULLSCREEN';
-        this.ctx.fillText(fullscreenText, drawFullscreenButtonX + drawMenuButtonWidth / 2, drawMenuButtonY + drawMenuButtonHeight / 2 + 5);
+        this.ctx.fillText(fullscreenText, drawFullscreenButtonX + drawButtonWidth / 2, drawButtonY + drawButtonHeight / 2 + 5);
 
         // Tilt controls button (mobile only) - positioned above other buttons
         if (this.isMobile) {
-            const drawTiltButtonX = (this.width - drawMenuButtonWidth) / 2;
-            const drawTiltButtonY = dims.tiltButtonY;
+            const drawTiltButtonX = (this.width - drawButtonWidth) / 2;
+            const drawTiltButtonY = this.height - 120;
 
             if (this.hoveredTiltButton) {
                 this.ctx.fillStyle = this.tiltControls.enabled ? '#FF6B6B' : '#4ECDC4';
@@ -2878,15 +2877,15 @@ class MonkeyUnicycleGame {
                 this.ctx.strokeStyle = this.tiltControls.enabled ? '#D32F2F' : '#00695C';
             }
 
-            this.ctx.fillRect(drawTiltButtonX, drawTiltButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+            this.ctx.fillRect(drawTiltButtonX, drawTiltButtonY, drawButtonWidth, drawButtonHeight);
             this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(drawTiltButtonX, drawTiltButtonY, drawMenuButtonWidth, drawMenuButtonHeight);
+            this.ctx.strokeRect(drawTiltButtonX, drawTiltButtonY, drawButtonWidth, drawButtonHeight);
 
             this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.font = `bold ${dims.menuButtonSize}px Arial`;
+            this.ctx.font = `bold ${this.isMobile ? 12 : 14}px Arial`;
             this.ctx.textAlign = 'center';
             const tiltText = this.tiltControls.enabled ? 'TILT: ON' : 'TILT: OFF';
-            this.ctx.fillText(tiltText, drawTiltButtonX + drawMenuButtonWidth / 2, drawTiltButtonY + drawMenuButtonHeight / 2 + 4);
+            this.ctx.fillText(tiltText, drawTiltButtonX + drawButtonWidth / 2, drawTiltButtonY + drawButtonHeight / 2 + 4);
         }
 
         // Instructions (adaptive for device type)
